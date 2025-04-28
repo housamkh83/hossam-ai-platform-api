@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>روبوت حسام - مساعد الذكاء الاصطناعي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+
+        .chat-container {
+            height: calc(100vh - 160px);
+        }
+
+        .message-enter {
+            animation: messageEnter 0.3s ease-out;
+        }
+
+        @keyframes messageEnter {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            margin: 0 1px;
+            background-color: currentColor;
+            border-radius: 50%;
+            animation: typingDots 1.5s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes typingDots {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        .dark ::-webkit-scrollbar-track { background: #374151; }
+        .dark ::-webkit-scrollbar-thumb { background: #6b7280; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        .image-preview-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+        .image-preview {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-right: 5px;
+        }
+        .remove-image-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            line-height: 20px;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .input-area-container {
+            position: relative;
+        }
+        #image-preview-wrapper {
+            padding-left: 5px;
+        }
+
+        #settings-modal.hidden { display: none; }
+        #settings-modal { display: flex; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg flex flex-col border-l border-gray-200 dark:border-gray-700 transition-transform transform md:translate-x-0 -translate-x-full fixed md:static h-full z-40" id="sidebar">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <button id="new-chat" class="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition text-sm flex-grow">
+                    <i class="fas fa-plus"></i>
+                    محادثة جديدة
+                </button>
+                <button id="sidebar-close" class="md:hidden text-gray-600 dark:text-gray-300 ml-2">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-2">
+                <div class="space-y-1" id="chat-history">
+                    <p class="text-xs text-center text-gray-500 dark:text-gray-400 p-2">سجل المحادثات (قيد التطوير)</p>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span class="font-medium text-gray-800 dark:text-gray-200">المستخدم</span>
+                </div>
+
+                <div class="space-y-2">
+                    <button id="settings-btn" class="w-full flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 py-2 px-3 rounded-lg transition">
+                        <i class="fas fa-cog"></i>
+                        الإعدادات
+                    </button>
+                    <button id="help-btn" class="w-full flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 py-2 px-3 rounded-lg transition">
+                        <i class="fas fa-question-circle"></i>
+                        المساعدة
+                    </button>
+                    <button id="theme-toggle" class="w-full flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 py-2 px-3 rounded-lg transition">
+                        <i class="fas fa-moon"></i>
+                        <span>الوضع الليلي</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col">
+            <!-- Header -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-2">
+                    <button id="sidebar-toggle" class="md:hidden text-gray-600 dark:text-gray-300 mr-2">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-robot text-xl"></i>
+                    </div>
+                    <h1 class="text-lg md:text-xl font-bold text-gray-800 dark:text-white">روبوت حسام</h1>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">
+                        <span class="text-sm text-gray-600 dark:text-gray-300">النموذج:</span>
+                        <select id="model-select" class="bg-transparent text-sm font-medium text-blue-600 dark:text-blue-400 focus:outline-none appearance-none pr-4">
+                            <option value="">تحميل...</option>
+                        </select>
+                        <i class="fas fa-chevron-down text-xs text-gray-500 dark:text-gray-400 -mr-3"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Chat area -->
+            <div class="flex-1 overflow-y-auto chat-container p-4" id="chat-area">
+                <div class="max-w-3xl mx-auto space-y-6" id="chat-messages">
+                    <!-- Welcome message -->
+                    <div class="message-enter bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800 dark:text-white">مرحباً! أنا روبوت حسام</h3>
+                                <p class="text-gray-600 dark:text-gray-300 mt-1 text-sm">
+                                    كيف يمكنني مساعدتك اليوم؟ اسألني عن أي شيء! يمكنك أيضاً تحميل صورة للسؤال عنها (إذا كان النموذج يدعم ذلك).
+                                </p>
+                                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <button class="suggestion-btn bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg p-3 text-sm text-right transition text-gray-700 dark:text-gray-200">
+                                        "ما هي أحدث التطورات في الذكاء الاصطناعي؟"
+                                    </button>
+                                    <button class="suggestion-btn bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg p-3 text-sm text-right transition text-gray-700 dark:text-gray-200">
+                                        "كيف يمكنني تحسين مهاراتي البرمجية؟"
+                                    </button>
+                                    <button class="suggestion-btn bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg p-3 text-sm text-right transition text-gray-700 dark:text-gray-200">
+                                        "أعطني أفكاراً لمشروع تخرج في علوم الحاسوب"
+                                    </button>
+                                    <button class="suggestion-btn bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg p-3 text-sm text-right transition text-gray-700 dark:text-gray-200">
+                                        "اشرح لي نظرية النسبية بشكل مبسط"
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input area -->
+            <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+                <div class="max-w-3xl mx-auto input-area-container">
+                    <div id="image-preview-wrapper" class="mb-2"></div>
+                    <input type="file" id="image-file-input" accept="image/*" style="display: none;">
+
+                    <div class="relative flex items-end gap-2">
+                        <textarea id="message-input" rows="1" class="flex-1 pr-12 pl-10 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400" placeholder="اكتب رسالتك هنا..."></textarea>
+
+                        <div class="absolute right-3 bottom-2.5 flex items-center gap-2">
+                            <button id="image-upload-btn" class="text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition" title="تحميل صورة">
+                                <i class="fas fa-image"></i>
+                            </button>
+                        </div>
+
+                        <button id="send-button" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0" disabled title="إرسال">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                        روبوت حسام قد يولد معلومات غير دقيقة أحياناً. يرجى التحقق من المعلومات المهمة.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-60 items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white">الإعدادات</h3>
+                <button id="close-settings" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-6">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">الوضع الليلي</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="dark-mode-toggle" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">تشغيل الصوت تلقائياً</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="autoplay-audio-toggle" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">إعدادات أخرى مثل النموذج الافتراضي، اللغة، سجل المحادثات سيتم إضافتها لاحقاً.</p>
+            </div>
+
+            <div class="p-5 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                <button id="save-settings" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include the JavaScript -->
+    <script src="/static/script.js"></script>
+</body>
+</html>
